@@ -1,9 +1,9 @@
 PK REST Web Service
 
-Aedan Dispenza
-Alison Wong
-Eric Bronner
-Jason Davis
+Aedan Dispenza 
+Alison Wong 
+Eric Bronner 
+Jason Davis 
 
 This web service is a (MongoDB?)-backed system for retrieving student grades for a distributed systems course. The web service is written in Go, supports the POST, GET, DELETE, UPDATE, PUT, and LIST operations, and responds with (JSON|XML).
 
