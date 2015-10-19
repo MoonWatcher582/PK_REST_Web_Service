@@ -32,42 +32,93 @@ type Student struct {
 }
 
 func (s *Server) CreateStudent(w http.ResponseWriter, r *http.Request) {
+	// Unmarshal json into Student.
 	student := Student{}
 	err := json.NewDecoder(r.Body).Decode(&student)
-	log.Infof("%+v", student)
 	if err != nil {
+		// Malformed json.
+		w.WriteHeader(http.StatusBadRequest)
 		log.Error(err)
 		return
 	}
+	log.Infof("%+v", student)
+
+	// Insert into db.
 	err = s.session.DB("test").C("students").Insert(student)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Error(err)
+		// Check for duplicates.
+		if mgo.IsDup(err) {
+			w.WriteHeader(http.StatusConflict)
+		} else {
+			// Something went wrong.
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Error(err)
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
 }
 
-func ReadStudent(w http.ResponseWriter, r *http.Request)   {}
-func UpdateStudent(w http.ResponseWriter, r *http.Request) {}
-func DeleteStudent(w http.ResponseWriter, r *http.Request) {}
-func ListStudent(w http.ResponseWriter, r *http.Request)   {}
+func (s *Server) ReadStudent(w http.ResponseWriter, r *http.Request) {
+	// Take URL Query that might have multiple values and distill it into one
+	// key value pair.
+	query := make(map[string]interface{})
+
+	for k, v := range r.URL.Query() {
+		// If more than one value for a key then fail.
+		if len(v) != 1 {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		query[k] = v[0]
+	}
+	log.Infof("%+v", query)
+
+	// Query db.
+	result := Student{}
+	err := s.session.DB("test").C("students").Find(query).One(&result)
+	if err != nil {
+		// Check if not found.
+		if err == mgo.ErrNotFound {
+			w.WriteHeader(http.StatusNotFound)
+		} else {
+			// Something went wrong.
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Error(err)
+		}
+		return
+	}
+
+	// Output result in json.
+	err = json.NewEncoder(w).Encode(result)
+	if err != nil {
+		log.Error(err)
+	}
+}
+
+func (s *Server) UpdateStudent(w http.ResponseWriter, r *http.Request) {}
+func (s *Server) DeleteStudent(w http.ResponseWriter, r *http.Request) {}
+func (s *Server) ListStudent(w http.ResponseWriter, r *http.Request)   {}
 
 func main() {
 	flag.Parse()
+
+	// Connect to mongodb
 	session, err := mgo.Dial("127.0.0.1")
 	if err != nil {
 		log.Fatal(err)
 	}
 	s := &Server{session}
-
 	log.Info("Opened Mongo Session\n")
 	defer session.Close()
 
+	// Create routes
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok\n")) })
 	r.HandleFunc("/student", s.CreateStudent).Methods("POST")
-	r.HandleFunc("/student", ReadStudent).Methods("GET")
+	r.HandleFunc("/student", s.ReadStudent).Methods("GET")
+	r.HandleFunc("/student", s.UpdateStudent).Methods("UPDATE")
+	r.HandleFunc("/student", s.DeleteStudent).Methods("DELETE")
 	http.ListenAndServe(":8000", r)
 }
