@@ -8,7 +8,9 @@ import (
 
 	"encoding/json"
 	"flag"
+	"fmt"
 	"net/http"
+	"strconv"
 )
 
 type Server struct {
@@ -104,7 +106,7 @@ func (s *Server) ReadStudent(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) UpdateStudent(w http.ResponseWriter, r *http.Request) {
+func (s *Server) UpdateStudents(w http.ResponseWriter, r *http.Request) {
 	var students []Student
 
 	// Get all Students.
@@ -112,6 +114,7 @@ func (s *Server) UpdateStudent(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Error(err)
+		return
 	}
 
 	// Calculate avg of student grades.
@@ -123,23 +126,22 @@ func (s *Server) UpdateStudent(w http.ResponseWriter, r *http.Request) {
 
 	// Set grade based on avg.
 	for _, student := range students {
-		grade := ""
 		switch {
 		case student.Grade > (avg + 10):
-			grade = "A"
+			student.Rating = "A"
 			break
 		case student.Grade > (avg - 10):
-			grade = "B"
+			student.Rating = "B"
 			break
 		case student.Grade > (avg - 20):
-			grade = "C"
+			student.Rating = "C"
 			break
 		default:
 			continue
 		}
 
 		// Update grade.
-		err := s.Collection().UpdateId(student.NetID, bson.M{"grade": grade})
+		err := s.Collection().UpdateId(student.NetID, student)
 		if err != nil {
 			// Something went wrong.
 			w.WriteHeader(http.StatusInternalServerError)
@@ -148,7 +150,41 @@ func (s *Server) UpdateStudent(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) DeleteStudent(w http.ResponseWriter, r *http.Request) {}
+func (s *Server) DeleteStudents(w http.ResponseWriter, r *http.Request) {
+	year := 0
+	var err error
+
+	// Checks if year exists.
+	if val, ok := r.URL.Query()["year"]; ok {
+		// Checks that only one year is given.
+		if len(val) != 1 {
+			w.WriteHeader(http.StatusBadRequest)
+			log.Error("Did not receive exactly one year.")
+			return
+		}
+		// Checks if the year is an int.
+		if year, err = strconv.Atoi(val[0]); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			log.Errorf("Invalid year received [%s]: %v", val[0], err)
+			return
+		}
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
+		log.Error("No year was given.")
+		return
+	}
+
+	// Remove all students with year less than the given year.
+	changes, err := s.Collection().RemoveAll(bson.M{"year": bson.M{"$lt": year}})
+	if err != nil {
+		// Something went wrong.
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Error(err)
+		return
+	}
+
+	fmt.Fprintf(w, "Successfully deleted %d students.\n", changes.Removed)
+}
 
 func (s *Server) ListStudents(w http.ResponseWriter, r *http.Request) {
 	var students []Student
@@ -186,8 +222,8 @@ func main() {
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok\n")) })
 	r.HandleFunc("/student", s.CreateStudent).Methods("POST")
 	r.HandleFunc("/student", s.ReadStudent).Methods("GET")
-	r.HandleFunc("/student", s.UpdateStudent).Methods("UPDATE")
-	r.HandleFunc("/student", s.DeleteStudent).Methods("DELETE")
+	r.HandleFunc("/student", s.UpdateStudents).Methods("UPDATE")
+	r.HandleFunc("/student", s.DeleteStudents).Methods("DELETE")
 	r.HandleFunc("/student/listall", s.ListStudents).Methods("GET")
 	// Start the server.
 	http.ListenAndServe(":8000", r)
