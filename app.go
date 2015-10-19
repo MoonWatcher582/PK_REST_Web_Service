@@ -31,6 +31,13 @@ type Student struct {
 	Rating string `json:"rating" bson:"rating"`
 }
 
+/*
+ * Gets Collection.
+ */
+func (s *Server) Collection() *mgo.Collection {
+	return s.session.DB("test").C("students")
+}
+
 func (s *Server) CreateStudent(w http.ResponseWriter, r *http.Request) {
 	// Unmarshal json into Student.
 	student := Student{}
@@ -44,7 +51,7 @@ func (s *Server) CreateStudent(w http.ResponseWriter, r *http.Request) {
 	log.Infof("%+v", student)
 
 	// Insert into db.
-	err = s.session.DB("test").C("students").Insert(student)
+	err = s.Collection().Insert(student)
 	if err != nil {
 		// Check for duplicates.
 		if mgo.IsDup(err) {
@@ -77,7 +84,7 @@ func (s *Server) ReadStudent(w http.ResponseWriter, r *http.Request) {
 
 	// Query db.
 	result := Student{}
-	err := s.session.DB("test").C("students").Find(query).One(&result)
+	err := s.Collection().Find(query).One(&result)
 	if err != nil {
 		// Check if not found.
 		if err == mgo.ErrNotFound {
@@ -99,26 +106,46 @@ func (s *Server) ReadStudent(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) UpdateStudent(w http.ResponseWriter, r *http.Request) {}
 func (s *Server) DeleteStudent(w http.ResponseWriter, r *http.Request) {}
-func (s *Server) ListStudent(w http.ResponseWriter, r *http.Request)   {}
+
+func (s *Server) ListStudents(w http.ResponseWriter, r *http.Request) {
+	var students []Student
+
+	// Get all Students.
+	err := s.Collection().Find(nil).All(&students)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Error(err)
+	}
+
+	// Output result in json.
+	err = json.NewEncoder(w).Encode(students)
+	if err != nil {
+		log.Error(err)
+	}
+}
 
 func main() {
 	flag.Parse()
 
-	// Connect to mongodb
+	// Connect to mongodb.
 	session, err := mgo.Dial("127.0.0.1")
 	if err != nil {
 		log.Fatal(err)
 	}
+	// Set SafeMode so write errors are checked.
+	session.SetSafe(&mgo.Safe{})
 	s := &Server{session}
 	log.Info("Opened Mongo Session\n")
 	defer session.Close()
 
-	// Create routes
+	// Create routes.
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok\n")) })
 	r.HandleFunc("/student", s.CreateStudent).Methods("POST")
 	r.HandleFunc("/student", s.ReadStudent).Methods("GET")
 	r.HandleFunc("/student", s.UpdateStudent).Methods("UPDATE")
 	r.HandleFunc("/student", s.DeleteStudent).Methods("DELETE")
+	r.HandleFunc("/student/listall", s.ListStudents).Methods("GET")
+	// Start the server.
 	http.ListenAndServe(":8000", r)
 }
