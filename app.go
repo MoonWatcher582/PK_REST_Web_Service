@@ -4,7 +4,7 @@ import (
 	log "github.com/golang/glog"
 	"github.com/gorilla/mux"
 	mgo "gopkg.in/mgo.v2"
-	//"gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 
 	"encoding/json"
 	"flag"
@@ -104,7 +104,50 @@ func (s *Server) ReadStudent(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) UpdateStudent(w http.ResponseWriter, r *http.Request) {}
+func (s *Server) UpdateStudent(w http.ResponseWriter, r *http.Request) {
+	var students []Student
+
+	// Get all Students.
+	err := s.Collection().Find(nil).All(&students)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Error(err)
+	}
+
+	// Calculate avg of student grades.
+	sum := 0
+	for _, student := range students {
+		sum += student.Grade
+	}
+	avg := sum / len(students)
+
+	// Set grade based on avg.
+	for _, student := range students {
+		grade := ""
+		switch {
+		case student.Grade > (avg + 10):
+			grade = "A"
+			break
+		case student.Grade > (avg - 10):
+			grade = "B"
+			break
+		case student.Grade > (avg - 20):
+			grade = "C"
+			break
+		default:
+			continue
+		}
+
+		// Update grade.
+		err := s.Collection().UpdateId(student.NetID, bson.M{"grade": grade})
+		if err != nil {
+			// Something went wrong.
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Error(err)
+		}
+	}
+}
+
 func (s *Server) DeleteStudent(w http.ResponseWriter, r *http.Request) {}
 
 func (s *Server) ListStudents(w http.ResponseWriter, r *http.Request) {
