@@ -13,6 +13,7 @@ import (
 	"strconv"
 )
 
+//	Server comes with a Mongo session
 type Server struct {
 	session *mgo.Session
 }
@@ -34,7 +35,9 @@ type Student struct {
 }
 
 /*
- * Gets Collection.
+ * Gets Collection (table).
+ *
+ *	DB('dbname').C('tablename')
  */
 func (s *Server) Collection() *mgo.Collection {
 	return s.session.DB("test").C("students")
@@ -70,10 +73,11 @@ func (s *Server) CreateStudent(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) ReadStudent(w http.ResponseWriter, r *http.Request) {
-	// Take URL Query that might have multiple values and distill it into one
-	// key value pair.
+	// Take URL Query that might have multiple arguments and distill it into one
+	// mapping object called query.
 	query := make(map[string]interface{})
 
+	// Create the mappping
 	for k, v := range r.URL.Query() {
 		// If more than one value for a key then fail.
 		if len(v) != 1 {
@@ -109,7 +113,7 @@ func (s *Server) ReadStudent(w http.ResponseWriter, r *http.Request) {
 func (s *Server) UpdateStudents(w http.ResponseWriter, r *http.Request) {
 	var students []Student
 
-	// Get all Students.
+	// Get all Students. Find(nil) imposes no restriction on search
 	err := s.Collection().Find(nil).All(&students)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -119,6 +123,7 @@ func (s *Server) UpdateStudents(w http.ResponseWriter, r *http.Request) {
 
 	// Calculate avg of student grades.
 	sum := 0
+	// First return val is just array index
 	for _, student := range students {
 		sum += student.Grade
 	}
@@ -155,6 +160,7 @@ func (s *Server) DeleteStudents(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	// Checks if year exists.
+	//	Run the assignment, check if ok
 	if val, ok := r.URL.Query()["year"]; ok {
 		// Checks that only one year is given.
 		if len(val) != 1 {
@@ -175,6 +181,7 @@ func (s *Server) DeleteStudents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Remove all students with year less than the given year.
+	//	Returns metadata about the change, we later print the number of items removed
 	changes, err := s.Collection().RemoveAll(bson.M{"year": bson.M{"$lt": year}})
 	if err != nil {
 		// Something went wrong.
@@ -199,6 +206,7 @@ func (s *Server) ListStudents(w http.ResponseWriter, r *http.Request) {
 	// Output result in json.
 	err = json.NewEncoder(w).Encode(students)
 	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		log.Error(err)
 	}
 }
@@ -211,11 +219,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// Set SafeMode so write errors are checked.
-	session.SetSafe(&mgo.Safe{})
+	defer session.Close()
+
 	s := &Server{session}
 	log.Info("Opened Mongo Session\n")
-	defer session.Close()
+
+	// Set SafeMode so write errors are checked.
+	session.SetSafe(&mgo.Safe{})
 
 	// Create routes.
 	r := mux.NewRouter()
