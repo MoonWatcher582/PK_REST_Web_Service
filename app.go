@@ -220,11 +220,11 @@ func main() {
 	// Create routes.
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok\n")) })
-	r.HandleFunc("/student", s.CreateStudent).Methods("POST")
-	r.HandleFunc("/student", s.ReadStudent).Methods("GET")
-	r.HandleFunc("/student", s.UpdateStudents).Methods("UPDATE")
-	r.HandleFunc("/student", s.DeleteStudents).Methods("DELETE")
-	r.HandleFunc("/student/listall", s.ListStudents).Methods("GET")
+	r.HandleFunc("/Student", s.CreateStudent).Methods("POST")
+	r.HandleFunc("/Student/getstudent", s.ReadStudent).Methods("GET")
+	r.HandleFunc("/Student", s.UpdateStudents).Methods("UPDATE")
+	r.HandleFunc("/Student", s.DeleteStudents).Methods("DELETE")
+	r.HandleFunc("/Student/listall", s.ListStudents).Methods("GET")
 	// Start the server.
-	http.ListenAndServe(":8000", r)
+	http.ListenAndServe(":1234", r)
 }

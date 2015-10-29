@@ -27,6 +27,23 @@ func main() {
 		log.Fatal("Method not defined.")
 	}
 
+	switch strings.ToUpper(*method) {
+	case "CREATE":
+		*method = "POST"
+	case "LIST":
+		*method = "GET"
+	case "REMOVE":
+		*method = "DELETE"
+	case "UPDATE":
+		*method = "UPDATE"
+	default:
+		log.Fatal("Incorrect Method.")
+	}
+
+	if strings.ToUpper(*method) == "CREATE" {
+		*method = "POST"
+	}
+
 	client := &http.Client{}
 
 	url, err := urllib.Parse(*urlFlag)
