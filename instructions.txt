@@ -1,7 +1,7 @@
 COMPILATION && SET-UP
 --------------------
-1) To set up the database, run the following commands in the shell:
-	mkdir data/db
+1) To set up and start up the database, run the following commands in the shell:
+	mkdir -p data/db
 	mongod --dbpath data/db
 
 2) To start the server, run the following in the shell:
@@ -15,6 +15,8 @@ COMPILATION && SET-UP
 
 RUNNING CLIENT OPERATIONS
 -------------------------
+	cd test
+
 	Create Command (POST):
 	--------------------
 	go run test.go -url="http://localhost:1234/Student" -method=Create -data='{"NetID":"147001234", "Name":"Mike","Major":"Computer Science","Year":2015,"Grade":90,"Rating":"D"}'
