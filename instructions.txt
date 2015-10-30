@@ -1,0 +1,39 @@
+COMPILATION && SET-UP
+--------------------
+1) To set up the database, run the following commands in the shell:
+	mkdir data/db
+	mongod --dbpath data/db
+
+2) To start the server, run the following in the shell:
+	go run app.go
+
+3) To view database content, run the following in the shell and mongo shell:
+	mongo
+		>use test
+		>db.students.find()
+
+
+RUNNING CLIENT OPERATIONS
+-------------------------
+	Create Command (POST):
+	--------------------
+	go run test.go -url="http://localhost:1234/Student" -method=Create -data='{"NetID":"147001234", "Name":"Mike","Major":"Computer Science","Year":2015,"Grade":90,"Rating":"D"}'
+
+	List Command for individual student(s) (GET):
+	-------------------------------------------
+	go run test.go -url="http://localhost:1234/Student/getstudent?major=Computer%20Science" -method=List
+	
+	'''NOTE: any set of arguments can be added after the '?' to narrow the search,
+		and multiple values will be returned as appropriate'''
+
+	Remove Command (DELETE):
+	----------------------
+	go run test.go -url="http://localhost:1234/Student" -method=remove  -year=2015
+
+	Update Command (UPDATE):
+	----------------------
+	go run test.go -url="http://localhost:1234/Student" -method=update
+
+	List Command for all students (GET):
+	----------------------------------
+	go run test.go -url="http://localhost:1234/Student/listall" -method=list

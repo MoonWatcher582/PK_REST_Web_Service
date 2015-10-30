@@ -1,0 +1,23 @@
+Alison Wong (aw450)
+Eric Bronner (ezb3)
+Jason Davis (j797d)
+Aedan Dispenza (ad778)
+
+PARSING
+-------
+Input flags are parsed using flag.parse() from Golang's flag package and placed into a set of variables.
+We parse data from the -data flag using a json decoder from Golang's json package.
+
+STORING
+-------
+We use MongoDB to handle persistent storage.
+Student data is decoded out of json and placed into a struct.
+The struct is written into Mongo as a document.
+If Mongo finds that it is inserting a duplicate, we raise an HTTP StatusConflict error.
+
+SEARCHING
+---------
+We find students from the MongoDB database by building a query.
+The query is a (k,v) map of (data fields, input search data).
+Mongo processes this query and finds the requested stored data.
+If the requested search is a listall, the input query is Nil, to which Mongo will return all data.
