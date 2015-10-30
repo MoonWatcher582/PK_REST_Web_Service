@@ -29,21 +29,6 @@ func main() {
 		log.Fatal("Method not defined.")
 	}
 
-	/*
-		switch strings.ToUpper(*method) {
-		case "CREATE":
-			*method = "POST"
-		case "LIST":
-			*method = "GET"
-		case "REMOVE":
-			*method = "DELETE"
-		case "UPDATE":
-			*method = "UPDATE"
-		default:
-			log.Fatal("Incorrect Method.")
-		}
-	*/
-
 	//	Switch on method
 	methodName := strings.ToUpper(*method)
 	opMap := map[string]string{

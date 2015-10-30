@@ -26,7 +26,7 @@ type Route struct {
 type route []Route
 
 type Student struct {
-	NetID  string `json:"id" bson:"_id"`
+	NetID  string `json:"netid" bson:"_id"`
 	Name   string `json:"name" bson:"name"`
 	Major  string `json:"major" bson:"major"`
 	Year   int    `json:"year" bson:"year"`
@@ -84,13 +84,21 @@ func (s *Server) ReadStudent(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		query[k] = v[0]
+		if k == "year" || k == "grade" {
+			i, err := strconv.Atoi(v[0])
+			if err != nil {
+				log.Error(err)
+			}
+			query[k] = i
+		} else {
+			query[k] = v[0]
+		}
 	}
 	log.Infof("%+v", query)
 
 	// Query db.
-	result := Student{}
-	err := s.Collection().Find(query).One(&result)
+	var results []Student
+	err := s.Collection().Find(query).All(&results)
 	if err != nil {
 		// Check if not found.
 		if err == mgo.ErrNotFound {
@@ -102,9 +110,8 @@ func (s *Server) ReadStudent(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
 	// Output result in json.
-	err = json.NewEncoder(w).Encode(result)
+	err = json.NewEncoder(w).Encode(results)
 	if err != nil {
 		log.Error(err)
 	}
